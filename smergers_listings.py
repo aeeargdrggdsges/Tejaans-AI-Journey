@@ -118,7 +118,11 @@ def main():
         sys.exit(f"robots.txt disallows {args.url}")
     delay = max(args.delay, crawl_delay or 0)
 
-    seen, rows = set(), []
+    seen, total = set(), 0
+    # utf-8-sig so Excel detects the encoding; rows are flushed after each page.
+    f = open(args.out, "w", newline="", encoding="utf-8-sig")
+    w = csv.DictWriter(f, fieldnames=FIELDS)
+    w.writeheader()
     for page in range(1, args.max_pages + 1):
         url = page_url(args.url, page)
         if page > 1:
@@ -134,17 +138,15 @@ def main():
         new = [r for r in parse_page(resp.text) if r["url"] not in seen]
         for r in new:
             seen.add(r["url"])
-        rows.extend(new)
-        print(f"page {page}: {len(new)} new listings (total {len(rows)})", file=sys.stderr)
+        w.writerows(new)
+        f.flush()
+        total += len(new)
+        print(f"page {page}: {len(new)} new listings (total {total})", file=sys.stderr, flush=True)
         if not new:
             break
 
-    # utf-8-sig so Excel detects the encoding.
-    with open(args.out, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
-        w.writeheader()
-        w.writerows(rows)
-    print(f"wrote {len(rows)} listings to {args.out}", file=sys.stderr)
+    f.close()
+    print(f"wrote {total} listings to {args.out}", file=sys.stderr)
 
 
 if __name__ == "__main__":
