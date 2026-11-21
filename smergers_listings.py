@@ -42,8 +42,8 @@ def parse_card(card):
     row = dict.fromkeys(FIELDS, "")
     link = card.select_one("h2 a[href]")
     href = card.get("data-url") or (link["href"] if link else "")
-    if not href:
-        return None
+    if not href or "/business/" not in href:
+        return None  # promo cards (e.g. "list your business") are not listings
     row["url"] = urljoin(BASE, href)
     if link:
         row["title"] = clean(link.get_text())
