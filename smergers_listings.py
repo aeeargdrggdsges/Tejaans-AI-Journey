@@ -108,6 +108,8 @@ def main():
     ap.add_argument("--out", default="smergers_listings.csv")
     ap.add_argument("--delay", type=float, default=15.0,
                     help="seconds between pages (robots.txt asks for 15)")
+    ap.add_argument("--start-page", type=int, default=1,
+                    help="resume: append to --out from this page, skipping URLs already in it")
     args = ap.parse_args()
 
     session = requests.Session()
@@ -119,13 +121,18 @@ def main():
     delay = max(args.delay, crawl_delay or 0)
 
     seen, total = set(), 0
+    resume = args.start_page > 1
+    if resume:
+        with open(args.out, newline="", encoding="utf-8-sig") as f:
+            seen = {r["url"] for r in csv.DictReader(f)}
     # utf-8-sig so Excel detects the encoding; rows are flushed after each page.
-    f = open(args.out, "w", newline="", encoding="utf-8-sig")
+    f = open(args.out, "a" if resume else "w", newline="", encoding="utf-8" if resume else "utf-8-sig")
     w = csv.DictWriter(f, fieldnames=FIELDS)
-    w.writeheader()
-    for page in range(1, args.max_pages + 1):
+    if not resume:
+        w.writeheader()
+    for page in range(args.start_page, args.max_pages + 1):
         url = page_url(args.url, page)
-        if page > 1:
+        if page > args.start_page:
             time.sleep(delay + random.uniform(0, 2))
         try:
             resp = session.get(url, timeout=30)
